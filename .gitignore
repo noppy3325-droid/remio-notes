@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.sites-runtime/
+*.tsbuildinfo
+*.tar.gz
+.env*
+!.env.example
+.vercel/
+.deploy/
+test-results/

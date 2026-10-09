@@ -1,0 +1,216 @@
+/* Keep secondary information quiet while maintaining readable card text. */
+.sidebar-list > button {
+  font-size: 12px;
+  color: #72727a;
+}
+.sidebar-list small,
+.sidebar-search {
+  color: #81818a;
+}
+.workspace-subtitle,
+.sidebar-section-title {
+  color: #888991;
+}
+.page-heading p {
+  font-size: 12px;
+  color: #72727a;
+}
+.view-tabs button {
+  font-size: 12px;
+  color: #797a82;
+}
+.text-button,
+.sort-control select {
+  font-size: 11px;
+  color: #787980;
+}
+.column-heading h2 {
+  font-size: 14px;
+  color: #34343a;
+}
+.column-description {
+  font-size: 10px;
+  color: #81818a;
+}
+.card-kind {
+  font-size: 10px;
+  color: #777780;
+}
+.card-body h3 {
+  font-size: 14px;
+  color: #303036;
+  line-height: 1.7;
+}
+.card-body p {
+  font-size: 12px;
+  color: #72727a;
+  line-height: 1.85;
+}
+.card-tags button {
+  font-size: 10px;
+  color: #787880;
+}
+.card-tags button:first-child {
+  color: #62626a;
+}
+.card-context {
+  font-size: 10px;
+  color: #82828a;
+}
+.card-bottom,
+.due,
+.reminder-mini {
+  font-size: 10px;
+  color: #81818a;
+}
+.overdue {
+  color: #a8624b;
+}
+.note-card {
+  padding: 17px 16px 0;
+}
+.card-bottom {
+  padding: 12px 0;
+}
+.welcome-banner p {
+  font-size: 11px;
+  color: #7b846f;
+}
+.completed .card-body h3 {
+  color: #85858b;
+}
+.completed .card-body p {
+  color: #8b8b93;
+}
+.detail-body h2,
+.editor-header h2,
+.settings-body > h2 {
+  color: #303036;
+}
+.detail-content {
+  font-size: 14px;
+  color: #606069;
+}
+.detail-property strong {
+  font-size: 12px;
+  color: #61616a;
+}
+.editor-body input:not([type="checkbox"]),
+.editor-body textarea {
+  color: #45454d;
+  background: #fdfdfc;
+}
+.editor-body textarea::placeholder,
+.editor-body input::placeholder {
+  color: #93939b;
+}
+.editor-body #card-content {
+  font-size: 14px;
+}
+.content-label,
+.field-label {
+  font-size: 12px;
+  color: #72727a;
+}
+.field-label > span,
+.another-check,
+.field-note {
+  color: #82828a;
+  font-size: 10px;
+}
+.attribute-field > label {
+  font-size: 11px;
+  color: #72727a;
+}
+.settings-body section p {
+  font-size: 12px;
+  color: #72727a;
+}
+.search-input-wrap input {
+  color: #3a3a42;
+}
+.search-result h3 {
+  font-size: 13px;
+  color: #414149;
+}
+.search-result p {
+  font-size: 11px;
+  color: #72727a;
+}
+.search-result small {
+  font-size: 10px;
+  color: #7f7f88;
+}
+.search-filter > button {
+  font-size: 10px;
+  color: #747780;
+}
+.search-result-count,
+.search-start h3 {
+  font-size: 10px;
+  color: #81818a;
+}
+.muted {
+  color: #81818a;
+}
+.content-footer {
+  font-size: 9px;
+  color: #8b8b94;
+}
+.compact {
+  padding: 16px 18px;
+}
+@media (max-width: 1200px) {
+  .card-body h3 {
+    font-size: 13px;
+  }
+  .card-body p {
+    font-size: 12px;
+  }
+  .view-tabs button {
+    font-size: 11px;
+  }
+  .toolbar-right {
+    gap: 10px;
+  }
+}
+@media (max-width: 800px) {
+  .toolbar-right {
+    padding-top: 5px;
+  }
+  .page-heading p {
+    font-size: 11px;
+  }
+  .welcome-banner p {
+    font-size: 10px;
+  }
+}
+@media (max-width: 540px) {
+  .card-body h3 {
+    font-size: 15px;
+  }
+  .card-body p {
+    font-size: 13px;
+  }
+  .view-tabs {
+    gap: 18px;
+  }
+  .view-tabs button {
+    font-size: 10px;
+  }
+  .page-heading p {
+    font-size: 10px;
+  }
+  .column-heading h2 {
+    font-size: 14px;
+  }
+  .content-footer {
+    font-size: 8px;
+  }
+  .note-card {
+    padding: 19px 18px 0;
+  }
+  .search-result small {
+    font-size: 9px;
+  }
+}
