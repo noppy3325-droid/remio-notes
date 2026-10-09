@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>プライバシーについて — Knowledge Notes</title>
+    <style>
+      body { margin: 0; background: #f6f5ef; color: #303b32; font-family: system-ui, sans-serif; line-height: 1.9; }
+      main { max-width: 740px; margin: 0 auto; padding: 48px 24px 72px; }
+      a { color: #365b3d; text-underline-offset: 4px; }
+      .brand { font-weight: 700; letter-spacing: -.04em; font-size: 24px; }
+      h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.4; margin-top: 40px; }
+      h2 { font-size: 20px; margin: 32px 0 10px; }
+      .date { color: #737b70; font-size: 14px; }
+      p, li { font-size: 16px; }
+      ul { padding-left: 24px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="brand" href="/">k. Knowledge Notes</a>
+      <h1>プライバシーについて</h1>
+      <p class="date">更新日：2026年10月9日</p>
+      <p>Knowledge Notesは、メモ・知識・タスクを保存するアプリです。Googleログインは任意です。ログインしている場合は、そのアカウントのカードを端末間で同期します。</p>
+      <h2>取得する情報と目的</h2>
+      <ul>
+        <li>Googleログインでは、Googleのユーザー識別子、氏名、メールアドレス、プロフィール画像のURLを認証基盤が取得します。本人確認、アカウントの表示、カードとアカウントの紐付けに利用します。要求する権限はopenid・email・profileです。</li>
+        <li>入力したカード本文、タイトル、タグ、期限、通知設定と、同期に必要な更新情報を保存します。</li>
+        <li>ログイン状態を維持する認証情報と、画面の設定をブラウザーに保存します。通信に必要なIPアドレスやブラウザー情報は、ホスティング・認証基盤でも処理されます。</li>
+      </ul>
+      <h2>保存先と外部サービス</h2>
+      <p>ログイン前のカードは、そのブラウザー内のSQLiteに保存されます。ログイン中のカードはブラウザーとSupabaseに保存されます。ログアウト後も端末内のコピーが残ります。</p>
+      <p>Googleがログインを処理し、Supabaseが認証とクラウド保存を処理し、Vercelがウェブサイトを配信します。各基盤の管理権限を持つ運営者は、運用・障害対応のために保存データへアクセスできる場合があります。カード本文はエンドツーエンド暗号化されていません。</p>
+      <p>本アプリには、Googleから取得した情報を広告・販売に利用する機能や、カードを他の利用者に公開する機能はありません。</p>
+      <h2>データの管理と削除</h2>
+      <p>設定からカードをJSONとして書き出せます。カードを削除すると、接続時に他の端末にも削除を同期します。再同期による復活を防ぐため、カードIDなどの削除記録はクラウドに残ります。基盤のバックアップや、別の端末・書き出したJSONにはコピーが残る場合があります。</p>
+      <p>端末内のデータは、ブラウザーのサイトデータを削除すると消えます。未同期の変更も消えるため、必要なカードは先に同期または書き出してください。Googleアカウントの接続解除だけでは、Supabaseや端末内の保存データは削除されません。</p>
+      <p>アカウントの削除や保存データに関するお問い合わせは、Googleログイン画面に表示されるサポート用メールアドレスへご連絡ください。</p>
+      <h2>Googleユーザーデータの扱い</h2>
+      <p>Googleから取得する情報の利用・転送は、<a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>に従い、ログインとアカウントの機能に必要な範囲に限定します。</p>
+      <p>情報の扱いが変わる場合は、このページを更新し、新しい利用目的や権限に応じて利用者へ案内します。</p>
+      <p><a href="/">アプリへ戻る</a></p>
+    </main>
+  </body>
+</html>

@@ -136,6 +136,11 @@ export function AccountControls({
           )}
         </>
       )}
+      <p>
+        <a href="/privacy.html" target="_blank" rel="noopener noreferrer">
+          プライバシーについて
+        </a>
+      </p>
       {error && (
         <p role="alert" className="account-error">
           {error}

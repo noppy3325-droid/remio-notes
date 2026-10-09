@@ -9,9 +9,12 @@
 - Vercel: `noppy3325-1230s-projects / knowledge-notes`。GitHubの `main` を接続済み。
 - Google Cloud: `Knowledge Notes` / `knowledge-notes-511113`。
 - 一般公開と、カードの端末内保存・再読み込み・日本語検索を確認済み。
-- Supabase新規プロジェクト作成とGoogle OAuthは設定途中。本番のGoogleログイン・クラウド同期はまだ利用できません。
+- Supabase: `knowledge` / `xglnmbexwsrowuosefjr` （South Asia / Mumbai）。カードDBのSQL適用、RLSと匿名アクセス拒否の確認、認証の本番戻り先設定を完了。
+- VercelのProductionにSupabase URLとpublishable keyを登録し、再デプロイ済み。
+- Google OAuthは設定途中。本番のGoogleログイン・クラウド同期はまだ利用できません。
 
 SupabaseのSite URLは `https://knowledge-notes-eight.vercel.app`、アプリへのRedirect URLは `https://knowledge-notes-eight.vercel.app/auth/callback` を使用します。
+Google OAuthのRedirect URIは `https://xglnmbexwsrowuosefjr.supabase.co/auth/v1/callback`、プライバシー案内は `https://knowledge-notes-eight.vercel.app/privacy.html` です。
 
 ## 1. Supabase
 
