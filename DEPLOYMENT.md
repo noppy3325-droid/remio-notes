@@ -2,6 +2,17 @@
 
 アプリはVercelの静的サイト、認証とデータベースはSupabaseを使用します。アプリの入口は一般公開し、カードはGoogleアカウント本人だけが読めます。ログイン前のカードはブラウザー内だけに保存されます。
 
+## このアプリの配置状況（2026-10-09）
+
+- 本番URL: https://knowledge-notes-eight.vercel.app/
+- GitHub: https://github.com/noppy3325-droid/knowledge-notes （非公開リポジトリ）
+- Vercel: `noppy3325-1230s-projects / knowledge-notes`。GitHubの `main` を接続済み。
+- Google Cloud: `Knowledge Notes` / `knowledge-notes-511113`。
+- 一般公開と、カードの端末内保存・再読み込み・日本語検索を確認済み。
+- Supabase新規プロジェクト作成とGoogle OAuthは設定途中。本番のGoogleログイン・クラウド同期はまだ利用できません。
+
+SupabaseのSite URLは `https://knowledge-notes-eight.vercel.app`、アプリへのRedirect URLは `https://knowledge-notes-eight.vercel.app/auth/callback` を使用します。
+
 ## 1. Supabase
 
 1. [Supabase Dashboard](https://supabase.com/dashboard)でプロジェクトを作成します。
