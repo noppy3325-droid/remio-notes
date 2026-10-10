@@ -767,35 +767,42 @@ export default function App({
                   </div>
                 </section>
               )}
-              <div className="home-shortcuts" aria-label="予定と大切なカード">
-                {[
-                  {
-                    id: "today" as View,
-                    icon: Sun,
-                    hint: "期限を過ぎた予定もここに",
-                  },
-                  {
-                    id: "upcoming" as View,
-                    icon: CalendarDays,
-                    hint: "これからやること",
-                  },
-                  {
-                    id: "pinned" as View,
-                    icon: Pin,
-                    hint: "いつでも取り出したいカード",
-                  },
-                ].map(({ id, icon: Icon, hint }) => (
-                  <button key={id} onClick={() => go(id)}>
-                    <Icon size={20} />
-                    <span>
-                      <strong>{titles[id]}</strong>
-                      <small>{hint}</small>
-                    </span>
-                    <b>{viewCount(cards, id)}</b>
-                    <ChevronRight size={16} />
-                  </button>
-                ))}
-              </div>
+              {cards.some(
+                (c) =>
+                  matchesView(c, "today") ||
+                  matchesView(c, "upcoming") ||
+                  (c.pinned && c.status !== "archived"),
+              ) && (
+                <div className="home-shortcuts" aria-label="予定と大切なカード">
+                  {[
+                    {
+                      id: "today" as View,
+                      icon: Sun,
+                      hint: "期限を過ぎた予定もここに",
+                    },
+                    {
+                      id: "upcoming" as View,
+                      icon: CalendarDays,
+                      hint: "これからやること",
+                    },
+                    {
+                      id: "pinned" as View,
+                      icon: Pin,
+                      hint: "いつでも取り出したいカード",
+                    },
+                  ].map(({ id, icon: Icon, hint }) => (
+                    <button key={id} onClick={() => go(id)}>
+                      <Icon size={20} />
+                      <span>
+                        <strong>{titles[id]}</strong>
+                        <small>{hint}</small>
+                      </span>
+                      <b>{viewCount(cards, id)}</b>
+                      <ChevronRight size={16} />
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           )}
           {cards.some((c) => c.sample) && (
