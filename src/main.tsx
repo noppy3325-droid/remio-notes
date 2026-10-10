@@ -4,6 +4,7 @@ import SessionGate from "./Account";
 import "./style.css";
 import "./readability.css";
 import "./account.css";
+import "./ux.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <SessionGate />

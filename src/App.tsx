@@ -42,6 +42,7 @@ import {
   RotateCcw,
   BookOpen,
   WifiOff,
+  Menu,
 } from "lucide-react";
 import {
   type Card,
@@ -70,24 +71,13 @@ import type { User } from "@supabase/supabase-js";
 import { preferenceKey } from "./cloud";
 import { AccountControls } from "./AccountControls";
 import { preserveStaleEditor } from "./sync-model";
+import { Navigation } from "./Navigation";
+import {
+  viewTitles as titles,
+  defaultStatus,
+  viewCount,
+} from "./view-navigation";
 
-const titles: Record<View, string> = {
-  home: "My cards",
-  all: "All cards",
-  today: "Today",
-  upcoming: "Upcoming",
-  tasks: "Tasks",
-  reminders: "Reminders",
-  knowledge: "Knowledge",
-  memos: "Memos",
-  recent: "Recently added",
-  pinned: "Pinned",
-  done: "Completed",
-  archive: "Archive",
-  random: "Random gems",
-  collections: "Collections",
-  stats: "Your knowledge",
-};
 const hints: Partial<Record<View, string>> = {
   home: "思いついたことも、これからのことも。ひとつの場所に。",
   today: "今日の自分に、渡しておきたいこと。",
@@ -97,22 +87,6 @@ const hints: Partial<Record<View, string>> = {
   pinned: "いつでも取り出したい、大切なカード。",
   archive: "必要になったら、いつでも戻せます。",
 };
-const navItems = [
-  { id: "home" as View, icon: Home, label: "ホーム" },
-  { id: "all" as View, icon: Layers, label: "すべてのカード" },
-  { id: "collections" as View, icon: FolderOpen, label: "コレクション" },
-  { id: "search", icon: Search, label: "検索" },
-  { id: "random" as View, icon: Shuffle, label: "ランダム" },
-  { id: "stats" as View, icon: BarChart3, label: "統計" },
-];
-const sidebarItems = [
-  { id: "all" as View, label: "All cards", icon: Layers },
-  { id: "today" as View, label: "Today", icon: Sun },
-  { id: "upcoming" as View, label: "Upcoming", icon: CalendarDays },
-  { id: "reminders" as View, label: "Reminders", icon: Bell },
-  { id: "pinned" as View, label: "Pinned", icon: Pin },
-  { id: "recent" as View, label: "Recently added", icon: Clock },
-];
 const collectionColors: Record<string, string> = {
   開発: "blue",
   ガジェット: "yellow",
@@ -146,6 +120,8 @@ function useDialogKeys(
   close.current = onClose;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const el = ref.current;
     const first = el?.querySelector<HTMLElement>(
       "input,textarea,button,select",
@@ -176,7 +152,8 @@ function useDialogKeys(
     document.addEventListener("keydown", key);
     return () => {
       document.removeEventListener("keydown", key);
-      previous?.focus();
+      document.body.style.overflow = previousOverflow;
+      if (previous?.isConnected) previous.focus();
     };
   }, [ref]);
 }
@@ -236,7 +213,7 @@ export default function App({
     [layout, setLayout] = useState<"board" | "list">(() =>
       safeRead("kn-layout", "board") === "list" ? "list" : "board",
     ),
-    [status, setStatus] = useState("active"),
+    [status, setStatus] = useState("all"),
     [sort, setSort] = useState("newest"),
     [filters, setFilters] = useState(false),
     [menuId, setMenuId] = useState<string | null>(null),
@@ -256,33 +233,11 @@ export default function App({
       } catch {
         return [];
       }
-    }),
-    [columns, setColumns] = useState<View[]>(() => {
-      try {
-        const c = JSON.parse(
-          safeRead("kn-columns", '["today","upcoming","knowledge","random"]'),
-        );
-        return Array.isArray(c) &&
-          c.length === 4 &&
-          c.every((v) =>
-            [
-              "today",
-              "upcoming",
-              "knowledge",
-              "random",
-              "pinned",
-              "recent",
-              "tasks",
-              "memos",
-              "reminders",
-            ].includes(v),
-          )
-          ? c
-          : ["today", "upcoming", "knowledge", "random"];
-      } catch {
-        return ["today", "upcoming", "knowledge", "random"];
-      }
     });
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, [view, tag]);
   const state = useRef(cards);
   state.current = cards;
   const writing = useRef(false);
@@ -322,9 +277,6 @@ export default function App({
   useEffect(() => {
     safeWrite("kn-layout", layout);
   }, [layout]);
-  useEffect(() => {
-    safeWrite("kn-columns", JSON.stringify(columns));
-  }, [columns]);
   const notify = (message: string) => setToast(message);
   const commit = async (next: Card[]) => {
     if (writing.current) return false;
@@ -353,21 +305,19 @@ export default function App({
   };
   const go = (v: View) => {
     setView(v);
+    if (v === "home") setSort("newest");
     setTag("");
     setQuery("");
-    setStatus(
-      v === "done"
-        ? "done"
-        : v === "all" || v === "knowledge" || v === "pinned" || v === "recent"
-          ? "all"
-          : "active",
-    );
+    setStatus(defaultStatus(v));
+    setFilters(false);
     setMenuId(null);
     setMobileSidebar(false);
     setViewOptions(false);
   };
   const openAdd = (content = "") => {
     setDraft(content);
+    setMobileSidebar(false);
+    setSettings(false);
     setEditor("new");
     setSearchOpen(false);
     setDetailId(null);
@@ -379,7 +329,8 @@ export default function App({
       );
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        if (!editor && !settings && !detailId) setSearchOpen((s) => !s);
+        if (!editor && !settings && !detailId && !mobileSidebar)
+          setSearchOpen((s) => !s);
         return;
       }
       if (
@@ -387,6 +338,7 @@ export default function App({
         !editor &&
         !settings &&
         !detailId &&
+        !mobileSidebar &&
         !searchOpen &&
         e.key.toLowerCase() === "n" &&
         !e.ctrlKey &&
@@ -403,7 +355,7 @@ export default function App({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [editor, settings, detailId, searchOpen]);
+  }, [editor, settings, detailId, searchOpen, mobileSidebar]);
   useEffect(() => {
     const close = (e: MouseEvent) => {
       if (!(e.target as HTMLElement).closest(".card-menu-wrap"))
@@ -494,15 +446,56 @@ export default function App({
         .map((x) => x.c),
     [cards, randomSeed],
   );
-  const columnCards = (v: View) => {
-    if (v === "random")
-      return randomCards.filter((c) => filtered.some((f) => f.id === c.id));
-    let a = filtered.filter((c) => matchesView(c, v));
-    if (v === "knowledge") a = a.filter((c) => !isTask(c));
-    if (v === "recent") a = a.slice(0, 6);
-    return a;
+  const displayed =
+    view === "random"
+      ? randomCards.filter((c) => filtered.some((f) => f.id === c.id))
+      : view === "home"
+        ? filtered.slice(0, 12)
+        : filtered;
+  const hasFilters = !!tag || !!query || status !== defaultStatus(view);
+  const clearFilters = () => {
+    setTag("");
+    setQuery("");
+    setStatus(defaultStatus(view));
   };
+  const modalOpen =
+    !!editor ||
+    !!detailId ||
+    settings ||
+    searchOpen ||
+    mobileSidebar ||
+    !!deleteCard;
+  const openSettings = () => {
+    setMobileSidebar(false);
+    setSettings(true);
+  };
+  const navigation = (
+    <Navigation
+      cards={cards}
+      user={user}
+      view={view}
+      tag={tag}
+      tags={tags}
+      onNavigate={go}
+      onTag={(t) => {
+        go("all");
+        setTag(t);
+      }}
+      onSettings={openSettings}
+    />
+  );
   const detail = cards.find((c) => c.id === detailId);
+  const relatedCards = detail
+    ? cards
+        .filter(
+          (c) =>
+            c.id !== detail.id &&
+            c.status !== "archived" &&
+            (c.tags.some((t) => detail.tags.includes(t)) ||
+              c.contexts.some((context) => detail.contexts.includes(context))),
+        )
+        .slice(0, 3)
+    : [];
   const addHistory = (q: string) => {
     if (!q.trim()) return;
     const next = [q, ...history.filter((x) => x !== q)].slice(0, 6);
@@ -588,12 +581,13 @@ export default function App({
           <span>
             {isTask(c)
               ? c.status === "done"
-                ? "Completed"
-                : "Task"
-              : (c.tags[0] ?? "Memo")}
+                ? "完了済み"
+                : "タスク"
+              : (c.tags[0] ?? "メモ")}
           </span>
         </div>
         <div className="card-top-right">
+          {c.sample && <span className="sample-badge">サンプル</span>}
           {c.pinned && <Pin size={12} className="pin-mark" />}
           <div className="card-menu-wrap">
             <button
@@ -638,7 +632,7 @@ export default function App({
       </div>
       <button className="card-body" onClick={() => setDetailId(c.id)}>
         <h3>{c.title ?? c.content.split("\n")[0].slice(0, 50)}</h3>
-        <p>{c.content}</p>
+        {(c.title || c.content.includes("\n")) && <p>{c.content}</p>}
       </button>
       <div className="card-tags">
         {c.tags.slice(0, 3).map((t) => (
@@ -718,180 +712,25 @@ export default function App({
     );
   return (
     <div className="app-shell">
-      <nav className="global-nav" aria-label="メインナビゲーション">
-        <button
-          className="brand-symbol"
-          title="remio-notes"
-          aria-label="remio-notes ホーム"
-          onClick={() => go("home")}
-        >
-          r<span>.</span>
-        </button>
-        <div className="global-links">
-          {navItems.map((n) => (
-            <button
-              key={n.id}
-              className={
-                "nav-icon " + (view === n.id && !tag ? "selected" : "")
-              }
-              title={n.label}
-              aria-label={n.label}
-              onClick={() =>
-                n.id === "search" ? setSearchOpen(true) : go(n.id as View)
-              }
-            >
-              <n.icon size={21} strokeWidth={1.65} />
-            </button>
-          ))}
-        </div>
-        <div className="nav-bottom">
-          <button
-            className="nav-icon"
-            aria-label="設定"
-            title="設定"
-            onClick={() => setSettings(true)}
-          >
-            <Settings size={21} strokeWidth={1.65} />
-          </button>
-          <button
-            className="avatar"
-            title={user?.email || "アカウントと同期"}
-            aria-label="アカウントと同期"
-            onClick={() => setSettings(true)}
-          >
-            {user?.email?.[0]?.toUpperCase() || "N"}
-          </button>
-        </div>
-      </nav>
-      <aside className={"sidebar " + (mobileSidebar ? "mobile-open" : "")}>
-        <div className="workspace-label">
-          remio-notes <ChevronDown size={14} />
-        </div>
-        <div className="workspace-subtitle">Your personal space</div>
-        <button className="add-sidebar" onClick={() => openAdd()}>
-          <Plus size={17} />
-          カードを追加<kbd>N</kbd>
-        </button>
-        <button className="sidebar-search" onClick={() => setSearchOpen(true)}>
-          <Search size={15} />
-          カードを探す<kbd>⌘ K</kbd>
-        </button>
-        <div className="sidebar-list">
-          {sidebarItems.map((n) => (
-            <button
-              key={n.id}
-              className={view === n.id && !tag ? "active" : ""}
-              onClick={() => go(n.id)}
-            >
-              <n.icon size={16} />
-              <span>{n.label}</span>
-              <small>
-                {n.id === "recent"
-                  ? active.length
-                  : cards.filter((c) => matchesView(c, n.id)).length}
-              </small>
-            </button>
-          ))}
-        </div>
-        <div className="sidebar-section-title">VIEWS</div>
-        <div className="sidebar-list">
-          {[
-            { id: "tasks" as View, label: "Tasks", icon: CheckCheck },
-            { id: "knowledge" as View, label: "Knowledge", icon: Lightbulb },
-            { id: "memos" as View, label: "Memos", icon: FileText },
-          ].map((n) => (
-            <button
-              key={n.id}
-              className={view === n.id && !tag ? "active" : ""}
-              onClick={() => go(n.id)}
-            >
-              <n.icon size={16} />
-              <span>{n.label}</span>
-              <small>{cards.filter((c) => matchesView(c, n.id)).length}</small>
-            </button>
-          ))}
-        </div>
-        <div className="sidebar-section-title">
-          COLLECTIONS
+      <aside className="sidebar" inert={modalOpen}>
+        {navigation}
+      </aside>
+      <main className="main" inert={modalOpen}>
+        <header className="topbar mobile-topbar">
+          <span className="mobile-brand">remio-notes</span>
           <button
             className="icon-button"
-            aria-label="コレクション一覧"
-            onClick={() => go("collections")}
+            aria-label="アカウントと同期"
+            onClick={openSettings}
           >
-            <Plus size={14} />
+            <Settings size={20} />
           </button>
-        </div>
-        <div className="sidebar-list collections">
-          {tags.slice(0, 7).map((t) => (
-            <button
-              key={t}
-              className={tag === t ? "active" : ""}
-              onClick={() => {
-                go("all");
-                setTag(t);
-              }}
-            >
-              <span className={"tag-dot " + (collectionColors[t] ?? "gray")} />
-              <span>{t}</span>
-              <small>{active.filter((c) => c.tags.includes(t)).length}</small>
-            </button>
-          ))}
-          {tags.length > 7 && (
-            <button className="see-all" onClick={() => go("collections")}>
-              すべてのタグを見る
-              <ChevronRight size={13} />
-            </button>
-          )}
-        </div>
-        <div className="sidebar-footer">
-          <button onClick={() => go("archive")}>
-            <Archive size={15} />
-            アーカイブ
-            <span>{cards.filter((c) => c.status === "archived").length}</span>
-          </button>
-          <div className="local-status">
-            <span className="status-dot" />
-            この端末に保存
-            <ShieldCheck size={13} />
-          </div>
-        </div>
-      </aside>
-      <main className="main">
-        <header className="topbar">
-          <div className="breadcrumb">
-            <button
-              className="mobile-menu icon-button"
-              aria-label="サイドバー切り替え"
-              onClick={() => setMobileSidebar(!mobileSidebar)}
-            >
-              <Layers size={18} />
-            </button>
-            <span>Personal workspace</span>
-            <ChevronRight size={12} />
-            <strong>{tag || titles[view]}</strong>
-          </div>
-          <div className="topbar-end">
-            <span className="local-top">
-              <span className="status-dot" />
-              Local first
-            </span>
-            <button
-              className="icon-button"
-              title="リマインダー"
-              aria-label="リマインダー"
-              onClick={() => go("reminders")}
-            >
-              <Bell size={17} />
-            </button>
-          </div>
         </header>
         <div className="main-content">
           <div className="page-heading">
             <div>
-              <div className="eyebrow">YOUR PERSONAL DRAWER</div>
-              <h1>
+              <h1 ref={headingRef} tabIndex={-1}>
                 {tag || titles[view]}
-                <span className="title-dot">.</span>
               </h1>
               <p>
                 {tag
@@ -907,37 +746,63 @@ export default function App({
               >
                 <Search size={16} />
                 <span>検索</span>
-                <kbd>⌘ K</kbd>
+                <kbd>Ctrl / ⌘ K</kbd>
               </button>
               <button className="primary" onClick={() => openAdd()}>
                 <Plus size={17} />
-                Add card
+                カードを追加
               </button>
             </div>
           </div>
           {view === "home" && !tag && !query && (
-            <section className="welcome-banner">
-              <div className="banner-icon">
-                <Lightbulb size={25} strokeWidth={1.45} />
+            <>
+              {!cards.some((c) => !c.sample) && (
+                <section className="welcome-banner">
+                  <div className="banner-icon">
+                    <PenLine size={23} />
+                  </div>
+                  <div>
+                    <h2>まずは、ひとこと残してみよう。</h2>
+                    <p>本文だけで保存できます。タグや期限は、あとからでも。</p>
+                  </div>
+                </section>
+              )}
+              <div className="home-shortcuts" aria-label="予定と大切なカード">
+                {[
+                  {
+                    id: "today" as View,
+                    icon: Sun,
+                    hint: "期限を過ぎた予定もここに",
+                  },
+                  {
+                    id: "upcoming" as View,
+                    icon: CalendarDays,
+                    hint: "これからやること",
+                  },
+                  {
+                    id: "pinned" as View,
+                    icon: Pin,
+                    hint: "いつでも取り出したいカード",
+                  },
+                ].map(({ id, icon: Icon, hint }) => (
+                  <button key={id} onClick={() => go(id)}>
+                    <Icon size={20} />
+                    <span>
+                      <strong>{titles[id]}</strong>
+                      <small>{hint}</small>
+                    </span>
+                    <b>{viewCount(cards, id)}</b>
+                    <ChevronRight size={16} />
+                  </button>
+                ))}
               </div>
-              <div>
-                <h2>A little less to remember.</h2>
-                <p>覚えておきたいことは、ここへ。頭の中には、余白を。</p>
-              </div>
-              <button onClick={() => openAdd()}>
-                ひとつ、残してみる
-                <ArrowUpRight size={15} />
-              </button>
-              <div className="paper-stack" aria-hidden="true">
-                <i />
-                <i />
-                <i>
-                  <span />
-                  <span />
-                  <span />
-                </i>
-              </div>
-            </section>
+            </>
+          )}
+          {cards.some((c) => c.sample) && (
+            <div className="sample-notice">
+              <span>「サンプル」と付いたカードで使い方を試せます。</span>
+              <button onClick={openSettings}>サンプルを管理</button>
+            </div>
           )}
           {view === "stats" ? (
             <Stats cards={cards} />
@@ -945,7 +810,7 @@ export default function App({
             <>
               <div className="section-heading">
                 <h2>あなたの引き出し</h2>
-                <span>{tags.length} collections</span>
+                <span>{tags.length}個のタグ</span>
               </div>
               <div className="collection-grid">
                 {tags.map((t) => (
@@ -965,9 +830,7 @@ export default function App({
                       <FolderOpen size={22} />
                     </span>
                     <h3>{t}</h3>
-                    <p>
-                      {active.filter((c) => c.tags.includes(t)).length} cards
-                    </p>
+                    <p>{active.filter((c) => c.tags.includes(t)).length}枚</p>
                     <ArrowUpRight size={17} />
                   </button>
                 ))}
@@ -983,54 +846,56 @@ export default function App({
           ) : (
             <>
               <div className="toolbar">
-                <div className="view-tabs">
-                  {[
-                    { id: "home" as View, label: "Overview" },
-                    { id: "all" as View, label: "All cards" },
-                    { id: "tasks" as View, label: "Tasks" },
-                    { id: "knowledge" as View, label: "Knowledge" },
-                  ].map((n) => (
+                <div className="section-heading toolbar-heading">
+                  <h2>{view === "home" ? "最近のカード" : "カード一覧"}</h2>
+                  <span>
+                    {view === "home" ? displayed.length : filtered.length}枚
+                  </span>
+                  {view === "home" && (
                     <button
-                      key={n.id}
-                      className={view === n.id && !tag ? "current" : ""}
-                      onClick={() => go(n.id)}
+                      className="text-button show-all"
+                      onClick={() => go("all")}
                     >
-                      {n.label}
-                      {n.id === "all" && <span>{active.length}</span>}
+                      すべて見る <ChevronRight size={15} />
                     </button>
-                  ))}
+                  )}
                 </div>
                 <div className="toolbar-right">
-                  <button
-                    className={"text-button " + (filters ? "chosen" : "")}
-                    onClick={() => setFilters(!filters)}
-                  >
-                    <SlidersHorizontal size={14} />
-                    Filter
-                    {(tag || status === "done") && (
-                      <span className="filter-dot" />
-                    )}
-                  </button>
-                  <label className="sort-control">
-                    <ArrowDownUp size={14} />
-                    <select
-                      aria-label="並べ替え"
-                      value={sort}
-                      onChange={(e) => setSort(e.target.value)}
+                  {view !== "home" && view !== "random" && (
+                    <button
+                      aria-expanded={filters}
+                      aria-controls="card-filters"
+                      className={"text-button " + (filters ? "chosen" : "")}
+                      onClick={() => setFilters(!filters)}
                     >
-                      <option value="newest">追加順</option>
-                      <option value="oldest">古い順</option>
-                      <option value="due">期限順</option>
-                      <option value="title">タイトル順</option>
-                    </select>
-                  </label>
+                      <SlidersHorizontal size={14} />
+                      絞り込み
+                      {hasFilters && <span className="filter-dot" />}
+                    </button>
+                  )}
+                  {view !== "home" && view !== "random" && (
+                    <label className="sort-control">
+                      <ArrowDownUp size={14} />
+                      <select
+                        aria-label="並べ替え"
+                        value={sort}
+                        onChange={(e) => setSort(e.target.value)}
+                      >
+                        <option value="newest">追加順</option>
+                        <option value="oldest">古い順</option>
+                        <option value="due">期限順</option>
+                        <option value="title">タイトル順</option>
+                      </select>
+                    </label>
+                  )}
                   <div className="view-options-wrap">
                     <button
                       className="text-button"
+                      aria-expanded={viewOptions}
                       onClick={() => setViewOptions(!viewOptions)}
                     >
                       <LayoutGrid size={14} />
-                      View
+                      表示
                       <ChevronDown size={12} />
                     </button>
                     {viewOptions && (
@@ -1038,62 +903,32 @@ export default function App({
                         <p>表示方法</p>
                         <button
                           className={layout === "board" ? "chosen" : ""}
-                          onClick={() => setLayout("board")}
+                          onClick={() => {
+                            setLayout("board");
+                            setViewOptions(false);
+                          }}
                         >
                           <LayoutGrid size={15} />
-                          カードボード
+                          カード
                           {layout === "board" && <Check size={14} />}
                         </button>
                         <button
                           className={layout === "list" ? "chosen" : ""}
-                          onClick={() => setLayout("list")}
+                          onClick={() => {
+                            setLayout("list");
+                            setViewOptions(false);
+                          }}
                         >
                           <List size={15} />
                           リスト{layout === "list" && <Check size={14} />}
                         </button>
-                        {view === "home" && (
-                          <>
-                            <p>ホームの列</p>
-                            {columns.map((v, i) => (
-                              <label key={i}>
-                                列 {i + 1}
-                                <select
-                                  value={v}
-                                  onChange={(e) =>
-                                    setColumns(
-                                      columns.map((x, j) =>
-                                        j === i ? (e.target.value as View) : x,
-                                      ),
-                                    )
-                                  }
-                                >
-                                  {[
-                                    "today",
-                                    "upcoming",
-                                    "knowledge",
-                                    "random",
-                                    "pinned",
-                                    "recent",
-                                    "tasks",
-                                    "memos",
-                                    "reminders",
-                                  ].map((x) => (
-                                    <option key={x} value={x}>
-                                      {titles[x as View]}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                            ))}
-                          </>
-                        )}
                       </div>
                     )}
                   </div>
                 </div>
               </div>
               {filters && (
-                <div className="filter-bar">
+                <div className="filter-bar" id="card-filters">
                   <label>
                     タグ
                     <select
@@ -1107,19 +942,28 @@ export default function App({
                       ))}
                     </select>
                   </label>
-                  <label>
-                    状態
-                    <select
-                      aria-label="状態で絞り込み"
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                      disabled={view === "archive" || view === "done"}
-                    >
-                      <option value="all">すべて</option>
-                      <option value="active">未完了</option>
-                      <option value="done">完了済み</option>
-                    </select>
-                  </label>
+                  {![
+                    "tasks",
+                    "today",
+                    "upcoming",
+                    "reminders",
+                    "archive",
+                    "done",
+                  ].includes(view) && (
+                    <label>
+                      状態
+                      <select
+                        aria-label="状態で絞り込み"
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                        disabled={view === "archive" || view === "done"}
+                      >
+                        <option value="all">すべて</option>
+                        <option value="active">未完了・メモ</option>
+                        <option value="done">完了済み</option>
+                      </select>
+                    </label>
+                  )}
                   <label className="inline-query">
                     <Search size={14} />
                     <input
@@ -1129,148 +973,148 @@ export default function App({
                       onChange={(e) => setQuery(e.target.value)}
                     />
                   </label>
-                  <button
-                    className="text-button"
-                    onClick={() => {
-                      setTag("");
-                      setQuery("");
-                      setStatus("all");
-                    }}
-                  >
+                  <button className="text-button" onClick={clearFilters}>
                     クリア
                     <X size={13} />
                   </button>
                 </div>
               )}
-              {view === "home" && layout === "board" ? (
-                <div className="board">
-                  {columns.map((v, i) => {
-                    const group = columnCards(v);
-                    return (
-                      <section className="board-column" key={i}>
-                        <div className="column-heading">
-                          <span
-                            className={
-                              "column-dot " +
-                              (v === "today"
-                                ? "green"
-                                : v === "upcoming"
-                                  ? "yellow"
-                                  : v === "knowledge"
-                                    ? "blue"
-                                    : "lavender")
-                            }
-                          />
-                          <h2>{titles[v]}</h2>
-                          <span className="count">{group.length}</span>
-                          {v === "random" ? (
-                            <button
-                              className="icon-button"
-                              aria-label="知識をシャッフル"
-                              onClick={() => setRandomSeed(randomSeed + 1)}
-                            >
-                              <Shuffle size={14} />
-                            </button>
-                          ) : (
-                            <button
-                              className="icon-button"
-                              aria-label={`${titles[v]}に追加`}
-                              onClick={() => openAdd()}
-                            >
-                              <Plus size={16} />
-                            </button>
-                          )}
-                        </div>
-                        <div className="column-description">
-                          {v === "today"
-                            ? "今日、やっておきたいこと"
-                            : v === "upcoming"
-                              ? "少し先の、自分のために"
-                              : v === "knowledge"
-                                ? "いつか役立つ、小さな発見"
-                                : "もう一度、出会う知識"}
-                        </div>
-                        <div className="column-cards">
-                          {group.map((c) => renderCard(c))}
-                          {!group.length && (
-                            <button
-                              className="column-empty"
-                              onClick={() => openAdd()}
-                            >
-                              <Plus size={18} />
-                              まだカードがありません
-                            </button>
-                          )}
-                        </div>
-                        <button
-                          className="add-column"
-                          onClick={() => openAdd()}
-                        >
-                          <Plus size={14} />
-                          Add a card
-                        </button>
-                      </section>
-                    );
-                  })}
+              {hasFilters && (
+                <div className="active-filters" role="status">
+                  <span>
+                    {tag && "#" + tag + " "}
+                    {query && "「" + query + "」 "}
+                    {status !== defaultStatus(view) &&
+                      (status === "done"
+                        ? "完了済み"
+                        : status === "active"
+                          ? "未完了・メモ"
+                          : "すべての状態")}
+                  </span>
+                  <button onClick={clearFilters}>
+                    絞り込みを解除 <X size={14} />
+                  </button>
                 </div>
-              ) : (
-                <>
-                  <div className="result-heading">
-                    <span>
-                      {filtered.length} cards{tag && ` · #${tag}`}
-                      {query && ` · “${query}”`}
-                    </span>
-                    {view === "random" && (
-                      <button
-                        className="secondary"
-                        onClick={() => setRandomSeed(randomSeed + 1)}
-                      >
-                        <Shuffle size={14} />
-                        シャッフル
-                      </button>
-                    )}
-                  </div>
-                  <div
-                    className={layout === "list" ? "card-list" : "card-grid"}
-                  >
-                    {(view === "random"
-                      ? randomCards.filter((c) =>
-                          filtered.some((x) => x.id === c.id),
-                        )
-                      : filtered
-                    ).map((c) => renderCard(c, layout === "list"))}
-                  </div>
-                  {!filtered.length && (
-                    <Empty
-                      title={
-                        query
-                          ? "見つかりませんでした"
-                          : "まだカードがありません"
-                      }
-                      text={
-                        query
-                          ? "別の言葉で探すか、新しい知識として残してみましょう。"
-                          : "あとで思い出したいことを、ひとつだけ書いてみよう。"
-                      }
-                      onAdd={() => openAdd(query)}
-                    />
-                  )}
-                </>
               )}
+              <>
+                {view === "random" && (
+                  <div className="result-heading">
+                    <button
+                      className="secondary"
+                      onClick={() => setRandomSeed(randomSeed + 1)}
+                    >
+                      <Shuffle size={14} />
+                      シャッフル
+                    </button>
+                  </div>
+                )}
+                <div className={layout === "list" ? "card-list" : "card-grid"}>
+                  {displayed.map((c) => renderCard(c, layout === "list"))}
+                </div>
+                {!displayed.length && (
+                  <Empty
+                    title={
+                      hasFilters
+                        ? "条件に合うカードがありません"
+                        : view === "today"
+                          ? "今日の予定はありません"
+                          : view === "archive"
+                            ? "アーカイブは空です"
+                            : view === "done"
+                              ? "完了したタスクはありません"
+                              : "まだカードがありません"
+                    }
+                    text={
+                      hasFilters
+                        ? "条件を解除すると、ほかのカードを表示できます。"
+                        : view === "today"
+                          ? "期限を設定したカードやリマインダーをここに表示します。"
+                          : view === "archive"
+                            ? "カードのメニューからアーカイブすると、ここに移動します。"
+                            : "本文をひとこと書くだけで保存できます。"
+                    }
+                    actionLabel={
+                      hasFilters
+                        ? "絞り込みを解除"
+                        : view === "archive"
+                          ? "すべてのカードへ"
+                          : view === "done"
+                            ? "未完了のタスクへ"
+                            : "カードを追加"
+                    }
+                    onAdd={
+                      hasFilters
+                        ? clearFilters
+                        : view === "archive"
+                          ? () => go("all")
+                          : view === "done"
+                            ? () => go("tasks")
+                            : () => openAdd(query)
+                    }
+                  />
+                )}
+              </>
               <footer className="content-footer">
                 <span>
                   <HardDrive size={12} />
-                  {storageMode}
+                  {user ? "この端末に保存・Googleで同期" : "この端末に保存"}
                 </span>
                 <span>
                   <kbd>N</kbd> 新しいカード
-                  <span className="footer-divider" /> <kbd>⌘ K</kbd> 検索
+                  <span className="footer-divider" /> <kbd>Ctrl / ⌘ K</kbd> 検索
                 </span>
               </footer>
             </>
           )}
         </div>
       </main>
+      <nav
+        className="mobile-navigation"
+        aria-label="メインナビゲーション"
+        inert={modalOpen}
+      >
+        <button
+          aria-current={view === "home" ? "page" : undefined}
+          onClick={() => go("home")}
+        >
+          <Home size={21} />
+          <span>ホーム</span>
+        </button>
+        <button onClick={() => setSearchOpen(true)}>
+          <Search size={21} />
+          <span>検索</span>
+        </button>
+        <button className="mobile-add" onClick={() => openAdd()}>
+          <Plus size={23} />
+          <span>追加</span>
+        </button>
+        <button
+          aria-expanded={mobileSidebar}
+          onClick={() => setMobileSidebar(true)}
+        >
+          <Menu size={21} />
+          <span>メニュー</span>
+        </button>
+      </nav>
+      {mobileSidebar && (
+        <Dialog
+          drawer
+          label="ナビゲーション"
+          onClose={() => setMobileSidebar(false)}
+        >
+          <div className="drawer-header">
+            <span>メニュー</span>
+            <button
+              className="icon-button"
+              aria-label="メニューを閉じる"
+              onClick={() => setMobileSidebar(false)}
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="navigation-drawer">{navigation}</div>
+        </Dialog>
+      )}
       {searchOpen && (
         <SearchDialog
           cards={cards}
@@ -1289,6 +1133,7 @@ export default function App({
         <Editor
           card={editor === "new" ? undefined : editor}
           initial={draft}
+          initialTag={tag}
           cards={cards}
           busy={busy}
           onClose={() => setEditor(null)}
@@ -1313,6 +1158,7 @@ export default function App({
               )
             ) {
               notify(exists ? "変更を保存しました" : "カードを保存しました");
+              if (editor === "new") go("home");
               if (another) {
                 setDraft("");
                 setEditor(null);
@@ -1327,7 +1173,7 @@ export default function App({
           <div className="drawer-header">
             <span>
               <BookOpen size={17} />
-              Card detail
+              カードの詳細
             </span>
             <button
               className="icon-button"
@@ -1340,7 +1186,7 @@ export default function App({
           <div className="detail-body">
             <div className="detail-kind">
               <span className={"tag-dot " + color(detail)} />
-              {detail.tags[0] ?? "Memo"}
+              {detail.tags[0] ?? "メモ"}
               {detail.sample && <span className="sample-badge">サンプル</span>}
             </div>
             <h2>{detail.title ?? detail.content.split("\n")[0]}</h2>
@@ -1442,27 +1288,20 @@ export default function App({
               <br />
               更新 {new Date(detail.updatedAt).toLocaleString("ja-JP")}
             </div>
-            <div className="related">
-              <h3>
-                <Layers size={15} />
-                関連するカード
-              </h3>
-              {cards
-                .filter(
-                  (c) =>
-                    c.id !== detail.id &&
-                    c.status !== "archived" &&
-                    (c.tags.some((t) => detail.tags.includes(t)) ||
-                      c.contexts.some((x) => detail.contexts.includes(x))),
-                )
-                .slice(0, 3)
-                .map((c) => (
+            {relatedCards.length > 0 && (
+              <div className="related">
+                <h3>
+                  <Layers size={15} />
+                  関連するカード
+                </h3>
+                {relatedCards.map((c) => (
                   <button key={c.id} onClick={() => setDetailId(c.id)}>
                     {c.title ?? c.content.slice(0, 40)}
                     <ChevronRight size={14} />
                   </button>
                 ))}
-            </div>
+              </div>
+            )}
           </div>
           <div className="drawer-footer">
             <button
@@ -1501,7 +1340,7 @@ export default function App({
           <div className="drawer-header">
             <span>
               <Settings size={18} />
-              Settings
+              設定
             </span>
             <button
               className="icon-button"
@@ -1517,14 +1356,16 @@ export default function App({
             <AccountControls
               user={user}
               authError={authError}
+              cardIds={cards.map((card) => card.id)}
               onImport={async () => {
                 const guest = await readGuestCards();
                 const existing = new Set(state.current.map((c) => c.id));
-                const imported = guest.map((c) => ({
-                  ...c,
-                  id: existing.has(c.id) ? crypto.randomUUID() : c.id,
-                  sample: false,
-                }));
+                const imported = guest
+                  .filter((c) => !existing.has(c.id))
+                  .map((c) => ({
+                    ...c,
+                    sample: false,
+                  }));
                 if (await commit([...state.current, ...imported]))
                   notify(`${imported.length}件を同期へ取り込みました。`);
                 else throw Error("取り込みに失敗しました");
@@ -1533,14 +1374,14 @@ export default function App({
             <section>
               <h3>
                 <ShieldCheck size={17} />
-                ローカルファースト
+                データの保存
               </h3>
               <p>
-                カードはこのブラウザーのSQLiteに保存します。ログイン中は本人専用のクラウドにも同期します。ログイン前のカードは端末内だけに保存します。
+                カードはこの端末のブラウザーに保存します。Googleログイン中は、同じアカウントの端末でも使えます。
               </p>
               <div className="info-strip">
                 <HardDrive size={15} />
-                {cards.length} cards · SQLite + FTS5
+                {cards.length}枚のカードを保存
               </div>
               <p>
                 ブラウザーのデータ削除に備えて、定期的にバックアップを保存してください。
@@ -1687,7 +1528,7 @@ export default function App({
                 入力の提案
               </h3>
               <p>
-                タグ・日時・文脈を端末内のルールで提案します。候補をクリックすると採用できます。LLMとEmbeddingによる意味検索は今後の拡張です。
+                本文に合うタグや日時を候補として表示します。候補を選ぶと設定でき、あとから変更できます。
               </p>
             </section>
             {cards.some((c) => c.sample) && (
@@ -1760,10 +1601,12 @@ function Empty({
   title,
   text,
   onAdd,
+  actionLabel = "カードを追加",
 }: {
   title: string;
   text: string;
   onAdd: () => void;
+  actionLabel?: string;
 }) {
   return (
     <div className="empty-state">
@@ -1774,7 +1617,7 @@ function Empty({
       <p>{text}</p>
       <button className="primary" onClick={onAdd}>
         <Plus size={16} />
-        カードを追加
+        {actionLabel}
       </button>
     </div>
   );
@@ -1835,6 +1678,7 @@ function Stats({ cards }: { cards: Card[] }) {
 function Editor({
   card,
   initial,
+  initialTag,
   cards,
   busy,
   onClose,
@@ -1843,6 +1687,7 @@ function Editor({
 }: {
   card?: Card;
   initial: string;
+  initialTag: string;
   cards: Card[];
   busy: boolean;
   onClose: () => void;
@@ -1851,7 +1696,8 @@ function Editor({
 }) {
   const [content, setContent] = useState(card?.content ?? initial),
     [title, setTitle] = useState(card?.title ?? ""),
-    [tags, setTags] = useState(card?.tags.join(" ") ?? ""),
+    [tags, setTags] = useState(card?.tags.join(" ") ?? initialTag),
+    [tagsOpen, setTagsOpen] = useState(!!card?.tags.length || !!initialTag),
     [due, setDue] = useState(card?.dueAt ?? ""),
     [remind, setRemind] = useState(() => {
       if (!card?.remindAt) return "";
@@ -1870,7 +1716,31 @@ function Editor({
     [remindOpen, setRemindOpen] = useState(!!card?.remindAt),
     [contextOpen, setContextOpen] = useState(!!card?.contexts.length),
     [another, setAnother] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [discardOpen, setDiscardOpen] = useState(false),
+    [leaveTarget, setLeaveTarget] = useState<Card | null>(null);
+  const initialRemind = useRef(remind);
+  const dirty =
+    content !== (card?.content ?? initial) ||
+    title !== (card?.title ?? "") ||
+    tags !== (card?.tags.join(" ") ?? initialTag) ||
+    due !== (card?.dueAt ?? "") ||
+    context !== (card?.contexts.join("\n") ?? "") ||
+    remind !== initialRemind.current;
+  const requestClose = () => {
+    if (busy) return;
+    if (dirty) setDiscardOpen(true);
+    else onClose();
+  };
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
   const form = useRef<HTMLFormElement>(null),
     contentRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -1926,7 +1796,10 @@ function Editor({
     );
   };
   return (
-    <Dialog label={card ? "カードを編集" : "カードを追加"} onClose={onClose}>
+    <Dialog
+      label={card ? "カードを編集" : "カードを追加"}
+      onClose={requestClose}
+    >
       <form
         ref={form}
         onSubmit={(e) => {
@@ -1942,21 +1815,47 @@ function Editor({
       >
         <div className="editor-header">
           <div>
-            <span className="eyebrow">A NOTE TO YOUR FUTURE SELF</span>
-            <h2>
-              {card ? "Edit card" : "Add a card"}
-              <span className="title-dot">.</span>
-            </h2>
+            <span className="eyebrow">本文だけで保存できます</span>
+            <h2>{card ? "カードを編集" : "カードを追加"}</h2>
           </div>
           <button
             type="button"
             className="icon-button"
             aria-label="閉じる"
-            onClick={onClose}
+            disabled={busy}
+            onClick={requestClose}
           >
             <X size={20} />
           </button>
         </div>
+        {discardOpen && (
+          <div className="discard-confirm" role="alert">
+            <strong>保存していない変更があります</strong>
+            <p>編集を続けるか、変更を破棄してください。</p>
+            <div>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => {
+                  setDiscardOpen(false);
+                  setLeaveTarget(null);
+                  contentRef.current?.focus();
+                }}
+              >
+                編集を続ける
+              </button>
+              <button
+                type="button"
+                className="secondary danger"
+                onClick={() =>
+                  leaveTarget ? onOpenSimilar(leaveTarget) : onClose()
+                }
+              >
+                変更を破棄する
+              </button>
+            </div>
+          </div>
+        )}
         <div className="editor-body">
           {showTitle ? (
             <input
@@ -1993,15 +1892,19 @@ function Editor({
             rows={6}
             maxLength={100000}
           />
-          <label className="field-label" htmlFor="card-tags">
-            タグ <span>任意 · スペースで区切る</span>
-          </label>
-          <input
-            id="card-tags"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="例：開発 USB-C"
-          />
+          {tagsOpen && (
+            <>
+              <label className="field-label" htmlFor="card-tags">
+                タグ <span>任意・スペースで区切る</span>
+              </label>
+              <input
+                id="card-tags"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder="例：旅行 持ち物"
+              />
+            </>
+          )}
           {content.trim() && (s.tags.length || s.dueAt || s.context) && (
             <div className="suggestions">
               <span>
@@ -2071,6 +1974,16 @@ function Editor({
           <div className="attribute-buttons">
             <button
               type="button"
+              aria-expanded={tagsOpen}
+              className={tagsOpen ? "selected" : ""}
+              onClick={() => setTagsOpen(!tagsOpen)}
+            >
+              <Plus size={12} />
+              タグ{chosenTags.length > 0 && "・" + chosenTags.length}
+            </button>
+            <button
+              type="button"
+              aria-expanded={dueOpen}
               className={dueOpen ? "selected" : ""}
               onClick={() => setDueOpen(!dueOpen)}
             >
@@ -2079,6 +1992,7 @@ function Editor({
             </button>
             <button
               type="button"
+              aria-expanded={remindOpen}
               className={remindOpen ? "selected" : ""}
               onClick={() => setRemindOpen(!remindOpen)}
             >
@@ -2087,11 +2001,12 @@ function Editor({
             </button>
             <button
               type="button"
+              aria-expanded={contextOpen}
               className={contextOpen ? "selected" : ""}
               onClick={() => setContextOpen(!contextOpen)}
             >
               <Plus size={12} />
-              Context
+              使う場面
             </button>
           </div>
           {dueOpen && (
@@ -2169,7 +2084,12 @@ function Editor({
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => onOpenSimilar(c)}
+                  onClick={() => {
+                    if (dirty) {
+                      setLeaveTarget(c);
+                      setDiscardOpen(true);
+                    } else onOpenSimilar(c);
+                  }}
                 >
                   {c.title ?? c.content.slice(0, 35)}
                   <ArrowUpRight size={13} />
@@ -2202,7 +2122,7 @@ function Editor({
             className="primary"
             disabled={busy || !content.trim()}
           >
-            {busy ? "保存中…" : "Save card"}
+            {busy ? "保存中…" : "保存する"}
             <ArrowUpRight size={15} />
           </button>
         </div>
@@ -2233,20 +2153,22 @@ function SearchDialog({
   const result = useMemo(
     () =>
       searchCards(
-        cards.filter(
-          (c) =>
-            matchesView(c, kind) &&
-            (date === "any" ||
-              (date === "today" &&
-                !!c.dueAt &&
-                c.dueAt.slice(0, 10) === dateKey()) ||
-              (date === "week" &&
-                !!c.dueAt &&
-                c.dueAt.slice(0, 10) >= dateKey() &&
-                c.dueAt.slice(0, 10) <= dayOffset(7))),
-        ),
+        [...cards]
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .filter(
+            (c) =>
+              matchesView(c, kind) &&
+              (date === "any" ||
+                (date === "today" &&
+                  !!c.dueAt &&
+                  c.dueAt.slice(0, 10) === dateKey()) ||
+                (date === "week" &&
+                  !!c.dueAt &&
+                  c.dueAt.slice(0, 10) >= dateKey() &&
+                  c.dueAt.slice(0, 10) <= dayOffset(7))),
+          ),
         q,
-      ).slice(0, 30),
+      ).slice(0, !q && kind === "all" && date === "any" ? 8 : 30),
     [cards, q, kind, date],
   );
   useEffect(() => setIdx(0), [q, kind, date]);
@@ -2289,57 +2211,55 @@ function SearchDialog({
             aria-label="検索を閉じる"
             onClick={onClose}
           >
-            <kbd>Esc</kbd>
+            <X size={20} />
           </button>
         </div>
-        <div className="search-filter">
-          {[
-            ["all", "すべて"],
-            ["tasks", "タスク"],
-            ["knowledge", "ナレッジ"],
-            ["memos", "メモ"],
-            ["reminders", "通知"],
-            ["done", "完了済み"],
-          ].map(([id, label]) => (
-            <button
-              key={id}
-              className={kind === id ? "active" : ""}
-              onClick={() => setKind(id as View)}
+        <details
+          className="search-filter"
+          open={kind !== "all" || date !== "any"}
+        >
+          <summary>
+            検索条件{kind !== "all" && `・${titles[kind]}`}
+            {date !== "any" &&
+              (date === "today" ? "・期限は今日" : "・期限は7日以内")}
+          </summary>
+          <div className="search-filter-options">
+            {[
+              ["all", "すべて"],
+              ["tasks", "タスク"],
+              ["knowledge", "知識"],
+              ["memos", "メモ"],
+              ["reminders", "通知"],
+              ["done", "完了済み"],
+              ["archive", "アーカイブ"],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                className={kind === id ? "active" : ""}
+                onClick={() => setKind(id as View)}
+              >
+                {label}
+              </button>
+            ))}
+            <select
+              aria-label="期限で絞り込み"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
             >
-              {label}
-            </button>
-          ))}
-          <select
-            aria-label="期限で絞り込み"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          >
-            <option value="any">期限：すべて</option>
-            <option value="today">今日</option>
-            <option value="week">7日以内</option>
-          </select>
-        </div>
-        {!q && kind === "all" && date === "any" && (
+              <option value="any">期限：すべて</option>
+              <option value="today">今日</option>
+              <option value="week">7日以内</option>
+            </select>
+          </div>
+        </details>
+        {!q && history.length > 0 && (
           <div className="search-start">
-            {history.length > 0 && (
-              <>
-                <h3>最近の検索</h3>
-                <div className="recent-searches">
-                  {history.map((h) => (
-                    <button key={h} onClick={() => setQ(h)}>
-                      <Clock size={13} />
-                      {h}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            <h3>こんな言葉から、探してみる</h3>
+            <h3>最近の検索</h3>
             <div className="recent-searches">
-              {["USB-C", "写真 逆光", "今週やること", "旅行"].map((h) => (
+              {history.map((h) => (
                 <button key={h} onClick={() => setQ(h)}>
+                  <Clock size={13} />
                   {h}
-                  <ArrowUpRight size={12} />
                 </button>
               ))}
             </div>
@@ -2347,7 +2267,9 @@ function SearchDialog({
         )}
         <div className="search-result-count">
           {q ? `“${q}” の検索結果` : "最近のカード"}
-          <span>{result.length} results</span>
+          <span>
+            {result.length === 30 ? "30件まで表示" : `${result.length}件`}
+          </span>
         </div>
         <div className="search-results">
           {result.map((c, i) => (
@@ -2375,8 +2297,24 @@ function SearchDialog({
           {!result.length && (
             <Empty
               title="見つかりませんでした"
-              text="別の言葉で探すか、新しい知識として残せます。"
-              onAdd={() => onAdd(q)}
+              text={
+                kind !== "all" || date !== "any"
+                  ? "検索条件を解除して、すべてのカードから探せます。"
+                  : "別の言葉で探すか、検索した内容を新しいカードとして残せます。"
+              }
+              actionLabel={
+                kind !== "all" || date !== "any"
+                  ? "検索条件を解除"
+                  : "この内容でカードを作る"
+              }
+              onAdd={
+                kind !== "all" || date !== "any"
+                  ? () => {
+                      setKind("all");
+                      setDate("any");
+                    }
+                  : () => onAdd(q)
+              }
             />
           )}
         </div>
@@ -2384,7 +2322,7 @@ function SearchDialog({
           <span>
             ↑ ↓ 選択 <span>↵ 開く</span>
           </span>
-          <span>全文・タグ・Contextを端末内で検索</span>
+          <span>本文・タグ・使う場面から検索</span>
         </div>
       </div>
     </Dialog>

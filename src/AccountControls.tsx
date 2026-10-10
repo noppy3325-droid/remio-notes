@@ -2,21 +2,41 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { Cloud, CloudOff, LogIn, LogOut, RefreshCw } from "lucide-react";
 import { cloud } from "./cloud";
-import { flushStorage } from "./storage";
+import { flushStorage, readGuestCards } from "./storage";
 import { getSyncStatus, syncNow } from "./sync";
 
 export function AccountControls({
   user,
   authError,
+  cardIds,
   onImport,
 }: {
   user: User | null;
   authError: string;
+  cardIds: string[];
   onImport: () => Promise<void>;
 }) {
   const [status, setStatus] = useState(getSyncStatus);
   const [error, setError] = useState(authError);
   const [busy, setBusy] = useState(false);
+  const [guestCount, setGuestCount] = useState(0);
+  const cardIdsKey = JSON.stringify(cardIds);
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    const existing = new Set<string>(JSON.parse(cardIdsKey));
+    readGuestCards()
+      .then((guest) => {
+        if (alive)
+          setGuestCount(guest.filter((card) => !existing.has(card.id)).length);
+      })
+      .catch(() => {
+        if (alive) setGuestCount(0);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [user, cardIdsKey]);
   useEffect(() => {
     const update = () => setStatus(getSyncStatus());
     window.addEventListener("notes-sync-status", update);
@@ -90,16 +110,20 @@ export function AccountControls({
               ログアウト
             </button>
           </div>
-          <p>
-            ログイン前のカードは別の引き出しに残っています。下のボタンでサンプル以外をこのアカウントへコピーし、同期できます。
-          </p>
-          <button
-            className="secondary-button"
-            disabled={busy}
-            onClick={() => void action(onImport)}
-          >
-            この端末のカードを同期へ取り込む
-          </button>
+          {guestCount > 0 && (
+            <>
+              <p>
+                ログイン前のカードは別の引き出しに残っています。下のボタンでサンプル以外をこのアカウントへコピーし、同期できます。
+              </p>
+              <button
+                className="secondary-button"
+                disabled={busy}
+                onClick={() => void action(onImport)}
+              >
+                この端末のカードを取り込む（{guestCount}枚）
+              </button>
+            </>
+          )}
           <p>
             ログアウト後もアカウントのオフライン用コピーはこのブラウザーに残ります。共有端末では利用後にサイトデータを削除してください。
           </p>
