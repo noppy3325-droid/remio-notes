@@ -1,6 +1,6 @@
 # Vercel公開・Google同期の設定
 
-Knowledge Notes はVercelで配信する静的Webアプリです。ログイン前のカードはブラウザー内に保存され、Googleログイン後はSupabaseで本人の端末間に同期できます。
+remio-notes はVercelで配信する静的Webアプリです。ログイン前のカードはブラウザー内に保存され、Googleログイン後はSupabaseで本人の端末間に同期できます。
 
 この文書は、自分のVercel・Supabase・Google Cloudアカウントで再現するための手順です。プロジェクトID、リダイレクトURL、認証情報は環境ごとに異なります。実際の値はリポジトリへコミットしないでください。
 
@@ -33,6 +33,8 @@ Knowledge Notes はVercelで配信する静的Webアプリです。ログイン�
 
 4. 環境変数の追加後に再デプロイします。
 5. Supabase Authentication / URL ConfigurationのSite URLにはVercel本番URLを、Redirect URLsには `https://<本番ドメイン>/auth/callback` を登録します。
+
+ドメインを変更した場合は、SupabaseのSite URL・Redirect URLsと、Google OAuthのJavaScript origins・ホームページ・プライバシーポリシーURLを同じ本番ドメインへ更新します。Redirect URLが許可リストと一致しないと、SupabaseはSite URLへ戻します。Google→SupabaseのコールバックURLはSupabaseプロジェクトのURLです。
 
 Viteの `VITE_` 変数はビルド成果物に含まれます。ここにはURLとpublishable keyだけを置き、Client Secretなどの秘密情報は置かないでください。
 

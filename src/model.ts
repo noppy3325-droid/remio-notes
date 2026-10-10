@@ -201,7 +201,7 @@ export function parseBackup(text: string): Card[] {
   const raw = JSON.parse(text);
   const data = Array.isArray(raw) ? raw : raw.cards;
   if (!Array.isArray(data) || data.length > 50000)
-    throw Error("正しい Knowledge Notes のバックアップを選んでください。");
+    throw Error("正しい remio-notes のバックアップを選んでください。");
   const ids = new Set<string>();
   return data.map((c: Card) => {
     if (

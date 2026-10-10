@@ -434,7 +434,7 @@ export default function App({
           typeof Notification !== "undefined" &&
           Notification.permission === "granted"
         ) {
-          const n = new Notification(c.title ?? "Knowledge Notes", {
+          const n = new Notification(c.title ?? "remio-notes", {
             body: c.content.slice(0, 160),
             icon: "/icon.svg",
             tag: c.id,
@@ -701,7 +701,7 @@ export default function App({
   if (loading)
     return (
       <div className="boot">
-        <div className="brand-symbol">k.</div>
+        <div className="brand-symbol">r.</div>
         <p>引き出しを開いています…</p>
       </div>
     );
@@ -721,10 +721,11 @@ export default function App({
       <nav className="global-nav" aria-label="メインナビゲーション">
         <button
           className="brand-symbol"
-          title="Knowledge Notes"
+          title="remio-notes"
+          aria-label="remio-notes ホーム"
           onClick={() => go("home")}
         >
-          k<span>.</span>
+          r<span>.</span>
         </button>
         <div className="global-links">
           {navItems.map((n) => (
@@ -764,7 +765,7 @@ export default function App({
       </nav>
       <aside className={"sidebar " + (mobileSidebar ? "mobile-open" : "")}>
         <div className="workspace-label">
-          Knowledge <ChevronDown size={14} />
+          remio-notes <ChevronDown size={14} />
         </div>
         <div className="workspace-subtitle">Your personal space</div>
         <button className="add-sidebar" onClick={() => openAdd()}>
@@ -1616,7 +1617,7 @@ export default function App({
                     );
                     const a = document.createElement("a");
                     a.href = url;
-                    a.download = `knowledge-notes-${dateKey()}.json`;
+                    a.download = `remio-notes-${dateKey()}.json`;
                     a.click();
                     setTimeout(() => URL.revokeObjectURL(url), 1000);
                     notify("バックアップを書き出しました");
@@ -1709,7 +1710,7 @@ export default function App({
               </section>
             )}
             <div className="settings-signature">
-              Knowledge Notes <span>v1.0 · Web edition</span>
+              remio-notes <span>v1.0 · Web edition</span>
             </div>
           </div>
         </Dialog>
