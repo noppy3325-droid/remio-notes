@@ -20,7 +20,7 @@ npm ci
 npm run android:debug
 ```
 
-Windows以外では`android/gradlew assembleDebug`を使ってください。`npm run android:sync`でWebの変更とネイティブプラグインを反映できます。Android Studioでは`android/`を開きます。
+ビルドスクリプトはWindows・macOS・Linuxに対応します。`npm run android:sync`でWebの変更とネイティブプラグインを反映できます。Android Studioでは`android/`を開きます。
 
 ## Google同期の設定
 
@@ -56,5 +56,7 @@ adb shell am instrument -w -e class app.remionotes.android.MobileFlowTest#create
 実機テストはカード追加、端末内保存、Activity再作成後の復元、検索、戻る操作、生成したテストカードの削除を確認します。テスト中はWebView内のネットワークだけを遮断し、スマートフォンの通信設定は変更しません。Googleログインと同期は別途、オンラインの実機で確認してください。
 
 Googleログインを端末で済ませた後は、同じコマンドのメソッド名を`authenticatedSyncAndBackup`に変更すると、ログイン済み表示、同期完了、JSON書き出しと共有用ファイルの読み取りを検証できます。このテストは共有画面へのIntentを捕捉し、外部への送信は行いません。
+
+macOS・Linuxでは`gradlew`を`./gradlew`に読み替えてください。
 
 Android版でも新しい有料APIは追加しません。同期先のプラン・上限はWeb版と共通です。

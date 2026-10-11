@@ -10,8 +10,8 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "android:sync": "tsc -b && vite build --mode android && cap sync android",
     "android:key": "node scripts/android-key.mjs",
-    "android:debug": "npm run android:sync && cd android && gradlew assembleDebug",
-    "android:release": "npm run android:sync && cd android && gradlew assembleRelease"
+    "android:debug": "npm run android:sync && node scripts/android-build.mjs debug",
+    "android:release": "npm run android:sync && node scripts/android-build.mjs release"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
