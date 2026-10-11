@@ -40,11 +40,16 @@ export function initStorage() {
   return (initPromise ??= (async () => {
     if (navigator.locks) {
       await new Promise<void>((resolve, reject) => {
+        // Android may recreate its Activity before the previous WebView has
+        // finished releasing browser resources. Wait briefly for that writer.
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         navigator.locks
           .request(
             "knowledge-notes-writer",
-            { ifAvailable: true },
+            { signal: controller.signal },
             async (lock) => {
+              clearTimeout(timeout);
               if (!lock) {
                 reject(
                   Error(
@@ -57,7 +62,16 @@ export function initStorage() {
               await new Promise(() => {});
             },
           )
-          .catch(reject);
+          .catch((error) => {
+            clearTimeout(timeout);
+            reject(
+              error.name === "AbortError"
+                ? Error(
+                    "このアプリは別のタブで開いています。そちらを閉じてから再読み込みしてください。",
+                  )
+                : error,
+            );
+          });
       });
     }
     vault = await new Promise((resolve, reject) => {
