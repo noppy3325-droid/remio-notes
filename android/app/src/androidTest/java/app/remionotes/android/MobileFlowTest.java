@@ -61,6 +61,7 @@ public class MobileFlowTest {
             waitFor("!document.querySelector('#card-content') && document.body.innerText.includes(" + JSONObject.quote(note) + ")");
             scenario.recreate();
             waitFor("document.querySelector('.mobile-add') && document.body.innerText.includes(" + JSONObject.quote(note) + ")");
+            scenario.onActivity(a -> a.getBridge().getWebView().getSettings().setBlockNetworkLoads(true));
             js("[...document.querySelectorAll('.mobile-navigation button')].find(e=>e.innerText.includes('検索')).click();return true;");
             waitFor("document.querySelector('input[aria-label=\"検索キーワード\"]')");
             input("input[aria-label=\"検索キーワード\"]", note);
