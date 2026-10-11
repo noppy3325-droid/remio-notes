@@ -70,6 +70,15 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { preferenceKey } from "./cloud";
 import { AccountControls } from "./AccountControls";
+import {
+  isNative,
+  minimizeNative,
+  notificationPermission as getNotificationPermission,
+  requestNotifications,
+  updateNativeReminders,
+  exportBackup,
+  takeNotificationCard,
+} from "./native";
 import { preserveStaleEditor } from "./sync-model";
 import { Navigation } from "./Navigation";
 import {
@@ -221,7 +230,7 @@ export default function App({
     [randomSeed, setRandomSeed] = useState(0),
     [mobileSidebar, setMobileSidebar] = useState(false),
     [deleteCard, setDeleteCard] = useState<Card | null>(null),
-    [notificationPermission, setNotificationPermission] = useState(
+    [notificationPermission, setNotificationPermission] = useState<string>(
       typeof Notification !== "undefined"
         ? Notification.permission
         : "unsupported",
@@ -235,6 +244,40 @@ export default function App({
       }
     });
   const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    const refresh = () => {
+      void getNotificationPermission()
+        .then(setNotificationPermission)
+        .catch(() => {});
+    };
+    refresh();
+    window.addEventListener("notes-native-resume", refresh);
+    return () => window.removeEventListener("notes-native-resume", refresh);
+  }, []);
+  useEffect(() => {
+    if (!loading) void updateNativeReminders(cards).catch(() => {});
+  }, [cards, loading, notificationPermission]);
+  useEffect(() => {
+    const back = () => {
+      if (menuId || viewOptions) {
+        setMenuId(null);
+        setViewOptions(false);
+      } else if (view !== "home" || tag) go("home");
+      else void minimizeNative();
+    };
+    const open = () => {
+      if (loading) return;
+      const id = takeNotificationCard();
+      if (id && state.current.some((card) => card.id === id)) setDetailId(id);
+    };
+    window.addEventListener("notes-native-back", back);
+    window.addEventListener("notes-open-card", open);
+    open();
+    return () => {
+      window.removeEventListener("notes-native-back", back);
+      window.removeEventListener("notes-open-card", open);
+    };
+  }, [view, tag, menuId, viewOptions, loading]);
   useEffect(() => {
     headingRef.current?.focus();
   }, [view, tag]);
@@ -383,6 +426,7 @@ export default function App({
         fired.add(c.id + ":" + c.remindAt);
         notify("リマインダー：" + (c.title ?? c.content.slice(0, 30)));
         if (
+          !isNative &&
           typeof Notification !== "undefined" &&
           Notification.permission === "granted"
         ) {
@@ -1384,14 +1428,14 @@ export default function App({
                 データの保存
               </h3>
               <p>
-                カードはこの端末のブラウザーに保存します。Googleログイン中は、同じアカウントの端末でも使えます。
+                カードはこの端末に保存します。Googleログイン中は、同じアカウントの端末でも使えます。
               </p>
               <div className="info-strip">
                 <HardDrive size={15} />
                 {cards.length}枚のカードを保存
               </div>
               <p>
-                ブラウザーのデータ削除に備えて、定期的にバックアップを保存してください。
+                データ削除に備えて、定期的にバックアップを保存してください。
               </p>
             </section>
             <section>
@@ -1400,7 +1444,9 @@ export default function App({
                 リマインダー
               </h3>
               <p>
-                アプリを開いている間、期限を過ぎた通知を表示します。閉じている間の定刻通知には対応していません。
+                {isNative
+                  ? "通知を許可すると、アプリを閉じていてもリマインダーを端末に表示します。省電力設定によって遅れる場合があります。"
+                  : "アプリを開いている間、期限を過ぎた通知を表示します。閉じている間の定刻通知には対応していません。"}
               </p>
               <button
                 className="secondary"
@@ -1410,29 +1456,33 @@ export default function App({
                 }
                 onClick={async () => {
                   try {
-                    const p = await Notification.requestPermission();
+                    const p = await requestNotifications();
                     setNotificationPermission(p);
                     notify(
                       p === "granted"
-                        ? "ブラウザー通知を有効にしました"
+                        ? "通知を有効にしました"
                         : "アプリ内の通知は引き続き使えます",
                     );
                   } catch {
-                    notify("このブラウザーでは通知を許可できません");
+                    notify("通知を許可できませんでした");
                   }
                 }}
               >
                 <Bell size={15} />
                 {notificationPermission === "granted"
-                  ? "ブラウザー通知は有効"
+                  ? "通知は有効"
                   : notificationPermission === "unsupported"
                     ? "アプリ内通知を使用"
                     : notificationPermission === "denied"
                       ? "通知がブロックされています"
-                      : "ブラウザー通知を有効にする"}
+                      : "通知を有効にする"}
               </button>
               {notificationPermission === "denied" && (
-                <p>ブラウザーのサイト設定から通知を許可できます。</p>
+                <p>
+                  {isNative
+                    ? "端末のアプリ設定から通知を許可できます。"
+                    : "ブラウザーのサイト設定から通知を許可できます。"}
+                </p>
               )}
             </section>
             <section>
@@ -1446,29 +1496,28 @@ export default function App({
               <div className="backup-buttons">
                 <button
                   className="secondary"
-                  onClick={() => {
-                    const url = URL.createObjectURL(
-                      new Blob(
-                        [
-                          JSON.stringify(
-                            {
-                              version: 1,
-                              exportedAt: new Date().toISOString(),
-                              cards,
-                            },
-                            null,
-                            2,
-                          ),
-                        ],
-                        { type: "application/json" },
-                      ),
-                    );
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `remio-notes-${dateKey()}.json`;
-                    a.click();
-                    setTimeout(() => URL.revokeObjectURL(url), 1000);
-                    notify("バックアップを書き出しました");
+                  onClick={async () => {
+                    try {
+                      await exportBackup(
+                        `remio-notes-${dateKey()}.json`,
+                        JSON.stringify(
+                          {
+                            version: 1,
+                            exportedAt: new Date().toISOString(),
+                            cards,
+                          },
+                          null,
+                          2,
+                        ),
+                      );
+                      notify(
+                        isNative
+                          ? "バックアップの共有を開きました"
+                          : "バックアップを書き出しました",
+                      );
+                    } catch {
+                      notify("バックアップの書き出しを中断しました");
+                    }
                   }}
                 >
                   <Download size={15} />

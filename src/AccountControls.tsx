@@ -4,6 +4,7 @@ import { Cloud, CloudOff, LogIn, LogOut, RefreshCw } from "lucide-react";
 import { cloud } from "./cloud";
 import { flushStorage, readGuestCards } from "./storage";
 import { getSyncStatus, syncNow } from "./sync";
+import { signInWithGoogle, isNative, updateNativeReminders } from "./native";
 
 export function AccountControls({
   user,
@@ -21,6 +22,9 @@ export function AccountControls({
   const [busy, setBusy] = useState(false);
   const [guestCount, setGuestCount] = useState(0);
   const cardIdsKey = JSON.stringify(cardIds);
+  useEffect(() => {
+    setError(authError);
+  }, [authError]);
   useEffect(() => {
     if (!user) return;
     let alive = true;
@@ -99,6 +103,7 @@ export function AccountControls({
               onClick={() =>
                 void action(async () => {
                   await flushStorage();
+                  if (isNative) await updateNativeReminders([]);
                   const { error } = await cloud!.auth.signOut({
                     scope: "local",
                   });
@@ -139,14 +144,7 @@ export function AccountControls({
             onClick={() =>
               void action(async () => {
                 await flushStorage();
-                const { error } = await cloud!.auth.signInWithOAuth({
-                  provider: "google",
-                  options: {
-                    redirectTo: `${location.origin}/auth/callback`,
-                    queryParams: { prompt: "select_account" },
-                  },
-                });
-                if (error) throw error;
+                await signInWithGoogle();
               })
             }
           >

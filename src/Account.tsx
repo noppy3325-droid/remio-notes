@@ -11,6 +11,11 @@ export default function SessionGate() {
   const [switching, setSwitching] = useState(false);
   useEffect(() => {
     let alive = true;
+    const nativeError = () =>
+      setAuthError(
+        "ログインを完了できませんでした。Googleログインをもう一度お試しください。",
+      );
+    window.addEventListener("notes-auth-error", nativeError);
     let knownId: string | null | undefined;
     let stop: (() => void) | undefined;
     let subscription: { unsubscribe(): void } | undefined;
@@ -50,6 +55,7 @@ export default function SessionGate() {
     });
     return () => {
       alive = false;
+      window.removeEventListener("notes-auth-error", nativeError);
       stop?.();
       subscription?.unsubscribe();
     };

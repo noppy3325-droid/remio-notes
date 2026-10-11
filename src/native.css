@@ -1,0 +1,9 @@
+.native-app {
+  overscroll-behavior: none;
+}
+.native-app body {
+  -webkit-tap-highlight-color: transparent;
+}
+.native-app .app-shell {
+  min-height: 100dvh;
+}

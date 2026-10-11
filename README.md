@@ -4,6 +4,8 @@
 
 [公開版を開く](https://remio-notes.vercel.app)
 
+[Android APKをダウンロード](https://github.com/noppy3325-droid/remio-notes/releases) · [Android版のビルドと設定](./ANDROID.md)
+
 思いついたこと、あとで確認したい知識、期限のある用事を、ひとつのカードとして残せる個人向けノートです。分類に時間をかけずに書き始め、必要になったときは検索・タグ・使う場面から取り出せます。
 
 ## こんな人のために
@@ -23,6 +25,7 @@
 
 ## 最近の変更
 
+- Android版を追加。画面とSQLiteをAPKに同梱し、初回からオフラインで記録・検索。端末の戻る操作、JSON共有、バックグラウンド通知、外部ブラウザーでのGoogleログインに対応
 - アプリ名を **remio-notes** に統一し、ブラウザーのタイトル、PWA名、ファビコン、ホーム画面アイコンを更新
 - iPad・スマートフォンを含む画面幅で、ナビゲーションとカード操作を迷わず行えるレイアウトに改善
 - iOS / iPadOSでも表示できるPNGのホーム画面アイコンを追加し、古いキャッシュが残らないようService Workerの更新処理を改善
@@ -44,6 +47,7 @@
 - Supabase（Google OAuth、本人専用の同期）
 - Vercel（静的配信）
 - Service Worker（オフライン利用）
+- Capacitor 8（Android APK、ネイティブ通知・共有・認証復帰）
 
 ## 開発
 
