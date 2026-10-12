@@ -49,24 +49,6 @@
 - Service Worker（オフライン利用）
 - Capacitor 8（Android APK、ネイティブ通知・共有・認証復帰）
 
-## 開発
-
-```sh
-npm install
-npm run dev
-```
-
-## 検証・ビルド
-
-```sh
-npm test
-npm run build
-npm run preview
-```
-
-## 自分の環境で公開する
-
-Vercel、Supabase、Google OAuthの設定手順は[DEPLOYMENT.md](./DEPLOYMENT.md)を参照してください。公開用の環境変数にはSupabaseのProject URLとpublishable keyだけを設定します。`service_role`、Google Client Secretなどの秘密情報をGitHub・Vercelの`VITE_`変数・ブラウザーに置かないでください。
 
 ## Web版の範囲
 
